@@ -12,6 +12,10 @@ Game = function(canvasId) {
   // On initie la scène avec une fonction associé à l'objet Game
   this.scene = this._initScene(engine)
 
+  let _player = new Player(this, canvas)
+
+  let _arena = new Arena(this)
+
   // Permet au jeu de tourner
   engine.runRenderLoop(() => {
     this.scene.render()
