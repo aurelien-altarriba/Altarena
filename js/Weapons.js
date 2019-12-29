@@ -1,0 +1,158 @@
+Weapons = function(Player) {
+  // On permet d'accéder à Player n'importe où dans Weapons
+  this.Player = Player
+
+  // Positions selon l'arme non utilisée
+  this.bottomPosition = new BABYLON.Vector3(0.5, -2.5, 1)
+
+  // Changement de Y quand l'arme est séléctionnée
+  this.topPositionY = -0.5
+
+  // Créons notre arme
+  this.rocketLauncher = this.newWeapon(Player)
+
+  // Cadence de tir
+  this.fireRate = 1000
+
+  // Delta de calcul pour savoir quand le tir est a nouveau disponible
+  this._deltaFireRate = this.fireRate
+
+  // Variable qui va changer selon le temps
+  this.canFire = true
+
+  // Variable qui changera à l'appel du tir depuis le Player
+  this.launchBullets = false
+
+  // Engine va nous être utile pour la cadence de tir
+  let engine = Player.game.scene.getEngine()
+
+  Player.game.scene.registerBeforeRender(() => {
+    if (!this.canFire) {
+      this._deltaFireRate -= engine.getDeltaTime()
+      if (this._deltaFireRate <= 0 && this.Player.isAlive) {
+        this.canFire = true
+        this._deltaFireRate = this.fireRate
+      }
+    }
+  })
+}
+
+Weapons.prototype = {
+  newWeapon : function(Player) {
+    let newWeapon = BABYLON.Mesh.CreateBox('rocketLauncher', 0.5, Player.game.scene)
+
+    // Nous faisons en sorte d'avoir une arme d'apparence plus longue que large
+    newWeapon.scaling = new BABYLON.Vector3(1, 0.7, 2)
+
+    // On l'associe à la caméra pour qu'il bouge de la même facon
+    newWeapon.parent = Player.camera
+
+    // On positionne le mesh APRÈS l'avoir attaché à la caméra
+    newWeapon.position = this.bottomPosition.clone()
+    newWeapon.position.y = this.topPositionY
+
+    // Ajoutons un material Rouge pour le rendre plus visible
+    let materialWeapon = new BABYLON.StandardMaterial('rocketLauncherMat', Player.game.scene)
+    materialWeapon.diffuseColor = new BABYLON.Color3(1, 0, 0)
+
+    newWeapon.material = materialWeapon
+
+    return newWeapon
+  },
+
+  fire : function(pickInfo) {
+    this.launchBullets = true
+  },
+
+  stopFire : function(pickInfo) {
+    this.launchBullets = false
+  },
+
+  launchFire : function() {
+    if (this.canFire) {
+      let renderWidth = this.Player.game.engine.getRenderWidth(true)
+      let renderHeight = this.Player.game.engine.getRenderHeight(true)
+
+      let direction = this.Player.game.scene.pick(renderWidth / 2, renderHeight / 2)
+      direction = direction.pickedPoint.subtractInPlace(this.Player.camera.position)
+      direction = direction.normalize()
+
+      this.createRocket(this.Player.camera, direction)
+      this.canFire = false;
+    }
+    else {
+      // Nothing to do : cannot fire
+    }
+  },
+
+  createRocket : function(playerPosition, direction) {
+    let positionValue = this.rocketLauncher.absolutePosition.clone()
+    let rotationValue = playerPosition.rotation
+    let newRocket = BABYLON.Mesh.CreateBox("rocket", 1, this.Player.game.scene)
+
+    newRocket.direction = new BABYLON.Vector3(
+      Math.sin(rotationValue.y) * Math.cos(rotationValue.x),
+      Math.sin(-rotationValue.x),
+      Math.cos(rotationValue.y) * Math.cos(rotationValue.x)
+    )
+
+    newRocket.position = new BABYLON.Vector3(
+      positionValue.x + (newRocket.direction.x * 1) ,
+      positionValue.y + (newRocket.direction.y * 1) ,
+      positionValue.z + (newRocket.direction.z * 1)
+    )
+
+    newRocket.rotation = new BABYLON.Vector3(rotationValue.x, rotationValue.y, rotationValue.z)
+    newRocket.scaling = new BABYLON.Vector3(0.5, 0.5, 1)
+    newRocket.isPickable = false
+
+    newRocket.material = new BABYLON.StandardMaterial("textureWeapon", this.Player.game.scene)
+    newRocket.material.diffuseColor = new BABYLON.Color3(1, 0, 0)
+
+    // On donne accès à Player dans registerBeforeRender
+    let Player = this.Player
+
+    newRocket.registerAfterRender(function() {
+
+      // On bouge la roquette vers l'avant
+      newRocket.translate(new BABYLON.Vector3(0, 0, 2), 2, 0)
+
+      // On crée un rayon qui part de la base de la roquette vers l'avant
+      let rayRocket = new BABYLON.Ray(newRocket.position, newRocket.direction)
+
+      // On regarde quel est le premier objet qu'on touche
+      let meshFound = newRocket.getScene().pickWithRay(rayRocket)
+
+      // Si la distance au premier objet touché est inférieure a 10, on détruit la roquette
+      if (!meshFound || meshFound.distance < 10) {
+        // On vérifie qu'on a bien touché quelque chose
+        if (meshFound.pickedMesh) {
+          // On crée une sphere qui représentera la zone d'impact
+          let explosionRadius = BABYLON.Mesh.CreateSphere("sphere", 5.0, 20, Player.game.scene)
+
+          // On positionne la sphère là où il y a eu impact
+          explosionRadius.position = meshFound.pickedPoint
+
+          // On fait en sorte que les explosions ne soient pas considérées pour le Ray de la roquette
+          explosionRadius.isPickable = false
+
+          // On crée un petit material orange
+          explosionRadius.material = new BABYLON.StandardMaterial("textureExplosion", Player.game.scene)
+          explosionRadius.material.diffuseColor = new BABYLON.Color3(1, 0.6, 0)
+          explosionRadius.material.specularColor = new BABYLON.Color3(0, 0, 0)
+          explosionRadius.material.alpha = 0.8
+
+          // Chaque frame, on baisse l'opacité et on efface l'objet quand l'alpha est arrivé à 0
+          explosionRadius.registerAfterRender(function() {
+            explosionRadius.material.alpha -= 0.02
+            if (explosionRadius.material.alpha <= 0) {
+              explosionRadius.dispose()
+            }
+          })
+        }
+
+        newRocket.dispose()
+      }
+    })
+  },
+}
