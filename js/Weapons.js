@@ -77,8 +77,8 @@ Weapons.prototype = {
       direction = direction.pickedPoint.subtractInPlace(this.Player.camera.position)
       direction = direction.normalize()
 
-      this.createRocket(this.Player.camera, direction)
-      this.canFire = false;
+      this.createRocket(this.Player.camera.playerBox, direction)
+      this.canFire = false
     }
     else {
       // Nothing to do : cannot fire

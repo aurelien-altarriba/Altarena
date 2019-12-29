@@ -29,18 +29,21 @@ Arena = function(game) {
 
   // Taille de la map
   let w_map = 500
+  let hauteur = 30
 
   // SOL
   let ground = BABYLON.Mesh.CreateGround("ground1", w_map, w_map, 2, scene)
   ground.material = materialSol
+  ground.checkCollisions = true
 
   // MURS
   let mur1 = BABYLON.Mesh.CreateBox("mur1", 1, scene)
-  mur1.scaling.x = 40
+  mur1.scaling.x = hauteur
   mur1.scaling.y = 1
   mur1.scaling.z = w_map
   mur1.position = new BABYLON.Vector3((w_map + mur1.scaling.y)/2, mur1.scaling.x/2, 0)
   mur1.rotation.z = degToRad(90)
+  mur1.checkCollisions = true
   mur1.material = materialMur
 
   let mur2 = mur1.clone("mur2")
@@ -56,10 +59,19 @@ Arena = function(game) {
   mur4.position = new BABYLON.Vector3(0, mur4.scaling.x/2, -w_map/2)
   mur4.rotation.y = degToRad(90)
 
+  let plafond = BABYLON.Mesh.CreateBox("plafond", 1, scene)
+  plafond.scaling.x = w_map
+  plafond.scaling.y = 1
+  plafond.scaling.z = w_map
+  plafond.position = new BABYLON.Vector3(0, hauteur, 0)
+  plafond.visibility = 0
+  plafond.checkCollisions = true
+
   // Obstacles
   let obs = []
   obs[0] = BABYLON.Mesh.CreateBox("obs0", 1, scene)
   obs[0].position = new BABYLON.Vector3(10, -5, 25)
+  obs[0].checkCollisions = true
   obs[0].material = materialBois
 
   let nbElem = getRandomInt(10, 40)

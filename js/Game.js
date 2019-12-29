@@ -59,11 +59,12 @@ Game = function(canvasId) {
 
 // Prototype
 Game.prototype = {
-
   // Prototype d'initialisation de la scène
   _initScene : function(engine) {
     let scene = new BABYLON.Scene(engine)
     scene.clearColor = new BABYLON.Color3(0.7, 0.8, 1)
+    scene.gravity = new BABYLON.Vector3(0, -9.81, 0)
+    scene.collisionsEnabled = true
     return scene
   }
 }
