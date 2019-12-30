@@ -27,12 +27,21 @@ Game = function(canvasId) {
   let engine = new BABYLON.Engine(canvas, true)
   this.engine = engine
   this.actualTime = Date.now()
+  this.allSpawnPoints = [
+    new BABYLON.Vector3(-20, 5, 0),
+    new BABYLON.Vector3(0, 5, 0),
+    new BABYLON.Vector3(20, 5, 0),
+    new BABYLON.Vector3(-40, 5, 0)
+  ]
 
   // On initie la scène avec une fonction associé à l'objet Game
   this.scene = this._initScene(engine)
 
   let _player = new Player(this, canvas)
   let _arena = new Arena(this)
+  this._PlayerData = _player
+  this._rockets = []
+  this._explosionRadius = []
 
   // Permet au jeu de tourner
   engine.runRenderLoop(() => {
@@ -41,6 +50,8 @@ Game = function(canvasId) {
     // Checker le mouvement du joueur en lui envoyant le ratio de déplacement
     _player._checkMove((this.fps)/60)
 
+    this.renderRockets()
+    this.renderExplosionRadius()
     this.scene.render()
 
     // Si launchBullets est a true, on tire
@@ -66,5 +77,70 @@ Game.prototype = {
     scene.gravity = new BABYLON.Vector3(0, -9.81, 0)
     scene.collisionsEnabled = true
     return scene
-  }
+  },
+
+  renderRockets : function() {
+    for (let i = 0; i < this._rockets.length; i++) {
+      // On bouge la roquette vers l'avant
+      this._rockets[i].translate(new BABYLON.Vector3(0, 0, 2), 2, 0)
+
+      // On crée un rayon qui part de la base de la roquette vers l'avant
+      let rayRocket = new BABYLON.Ray(this._rockets[i].position, this._rockets[i].direction)
+
+      // On regarde quel est le premier objet qu'on touche
+      let meshFound = this._rockets[i].getScene().pickWithRay(rayRocket)
+
+      // Si la distance au premier objet touché est inférieure à 10, on détruit la roquette
+      if (!meshFound || meshFound.distance < 10) {
+
+        // On vérifie qu'on a bien touché quelque chose
+        if (meshFound.pickedMesh && !meshFound.pickedMesh.isMain) {
+          // On crée une sphere qui représentera la zone d'impact
+          let explosionRadius = BABYLON.Mesh.CreateSphere("sphere", 5.0, 20, this.scene)
+
+          // On positionne la sphère là où il y a eu impact
+          explosionRadius.position = meshFound.pickedPoint
+
+          // On fait en sorte que les explosions ne soient pas considérées pour le Ray de la roquette
+          explosionRadius.isPickable = false
+
+          // On crée un petit material orange
+          explosionRadius.material = new BABYLON.StandardMaterial("textureExplosion", this.scene)
+          explosionRadius.material.diffuseColor = new BABYLON.Color3(1, 0.6, 0)
+          explosionRadius.material.specularColor = new BABYLON.Color3(0, 0, 0)
+          explosionRadius.material.alpha = 0.8
+
+          // Calcule la matrice de l'objet pour les collisions
+          explosionRadius.computeWorldMatrix(true)
+
+          if (this._PlayerData.isAlive && this._PlayerData.camera.playerBox &&
+            explosionRadius.intersectsMesh(this._PlayerData.camera.playerBox))
+          {
+            // Envoi à la fonction d'affectation des dégâts
+            this._PlayerData.getDamage(30)
+          }
+
+          this._explosionRadius.push(explosionRadius)
+        }
+        this._rockets[i].dispose()
+        this._rockets.splice(i, 1)
+      }
+      else {
+        let relativeSpeed = 1 / (this.fps/60)
+        this._rockets[i].position.addInPlace(this._rockets[i].direction.scale(relativeSpeed))
+      }
+    }
+  },
+
+  renderExplosionRadius : function() {
+    if (this._explosionRadius.length > 0) {
+      for (var i = 0; i < this._explosionRadius.length; i++) {
+        this._explosionRadius[i].material.alpha -= 0.02
+        if (this._explosionRadius[i].material.alpha <= 0) {
+          this._explosionRadius[i].dispose()
+          this._explosionRadius.splice(i, 1)
+        }
+      }
+    }
+  },
 }

@@ -1,10 +1,8 @@
 Player = function(game, canvas) {
-  this.game = game
-  this.angularSensibility = 200
-  this.speed = 1
   this.weaponShoot = false
-
-  // Axe de mouvement X et Z
+  this.game = game
+  this.speed = 1
+  this.angularSensibility = 200
   this.axisMovement = [false, false, false, false]
 
   window.addEventListener("keyup", (evt) => {
@@ -66,10 +64,10 @@ Player = function(game, canvas) {
 
   // On fait pareil quand l'utilisateur relâche le clic de la souris
   canvas.addEventListener("mouseup", (evt) => {
-      if (this.controlEnabled && this.weaponShoot) {
-          this.weaponShoot = false
-          this.handleUserMouseUp()
-      }
+    if (this.controlEnabled && this.weaponShoot) {
+      this.weaponShoot = false
+      this.handleUserMouseUp()
+    }
   }, false)
 
   // Initialisation de la caméra
@@ -84,8 +82,13 @@ Player = function(game, canvas) {
 
 Player.prototype = {
   _initCamera : function(scene, canvas) {
+    let randomPoint = Math.round(Math.random() * (this.game.allSpawnPoints.length - 1))
+
+    // Le spawnPoint est celui choisi selon le random plus haut
+    this.spawnPoint = this.game.allSpawnPoints[randomPoint]
+
     let playerBox = BABYLON.Mesh.CreateBox("headMainPlayer", 3, scene)
-    playerBox.position = new BABYLON.Vector3(-20, 5, 0)
+    playerBox.position = this.spawnPoint.clone();
     playerBox.ellipsoid = new BABYLON.Vector3(2, 2, 2)
 
     // On crée la caméra
@@ -100,14 +103,20 @@ Player.prototype = {
     // Si le joueur est en vie ou non
     this.isAlive = true
 
-    // Pour savoir que c'est le joueur principal
+    // Attributs
+    this.camera.health = 100
     this.camera.isMain = true
+    this.camera.armor = 0
 
     // On crée les armes
     this.camera.weapons = new Weapons(this)
 
     // On ajoute l'axe de mouvement
     this.camera.axisMovement = [false, false, false, false]
+
+    // On réinitialise la position de la caméra
+    //this.camera.setTarget(BABYLON.Vector3.Zero())
+    this.game.scene.activeCamera = this.camera
 
     let hitBoxPlayer = BABYLON.Mesh.CreateBox("hitBoxPlayer", 3, scene)
     hitBoxPlayer.parent = this.camera.playerBox
@@ -165,7 +174,6 @@ Player.prototype = {
       )
       this.camera.playerBox.moveWithCollisions(forward)
     }
-
     if (this.camera.axisMovement[1]) {
       backward = new BABYLON.Vector3(
         parseFloat(-Math.sin(parseFloat(this.camera.playerBox.rotation.y))) * relativeSpeed,
@@ -174,7 +182,6 @@ Player.prototype = {
       )
       this.camera.playerBox.moveWithCollisions(backward)
     }
-
     if (this.camera.axisMovement[2]) {
       left = new BABYLON.Vector3(
         parseFloat(Math.sin(parseFloat(this.camera.playerBox.rotation.y) + degToRad(-90))) * relativeSpeed,
@@ -183,7 +190,6 @@ Player.prototype = {
       )
       this.camera.playerBox.moveWithCollisions(left)
     }
-
     if (this.camera.axisMovement[3]) {
       right = new BABYLON.Vector3(
         parseFloat(-Math.sin(parseFloat(this.camera.playerBox.rotation.y) + degToRad(-90))) * relativeSpeed,
@@ -192,7 +198,53 @@ Player.prototype = {
       )
       this.camera.playerBox.moveWithCollisions(right)
     }
+    this.camera.playerBox.moveWithCollisions(new BABYLON.Vector3(0,(-1.5) * relativeSpeed ,0))
+  },
 
-    this.camera.playerBox.moveWithCollisions(new BABYLON.Vector3(0,(-1.5) * relativeSpeed, 0))
-  }
+  getDamage : function(damage) {
+    let damageTaken = damage
+
+    // Tampon des dégâts par l'armure
+    if (this.camera.armor > Math.round(damageTaken / 2)) {
+      this.camera.armor -= Math.round(damageTaken / 2)
+      damageTaken = Math.round(damageTaken / 2)
+    }
+    else {
+      damageTaken -= this.camera.armor
+      this.camera.armor = 0
+    }
+
+    // Si le joueur i a encore de la vie
+    if (this.camera.health > damageTaken) {
+      this.camera.health -= damageTaken
+    }
+    else {
+      this.playerDead()
+    }
+  },
+
+  playerDead : function(i) {
+    this.deadCamera = new BABYLON.ArcRotateCamera("ArcRotateCamera", 1, 0.8, 10,
+      new BABYLON.Vector3(
+        this.camera.playerBox.position.x,
+        this.camera.playerBox.position.y,
+        this.camera.playerBox.position.z
+      ),
+      this.game.scene
+    )
+
+    this.game.scene.activeCamera = this.deadCamera
+    this.deadCamera.attachControl(this.game.scene.getEngine().getRenderingCanvas())
+
+    // Suppression des éléments
+    this.camera.playerBox.dispose()
+    this.camera.dispose()
+    this.camera.weapons.rocketLauncher.dispose()
+    this.isAlive = false
+
+    let canvas = this.game.scene.getEngine().getRenderingCanvas()
+    setTimeout(() => {
+      this._initCamera(this.game.scene, canvas)
+    }, 4000)
+  },
 }

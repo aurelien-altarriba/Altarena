@@ -9,7 +9,7 @@ Arena = function(game) {
   ciel.specular = new BABYLON.Color3(1, 1, 1)
 
   let lum_interne = new BABYLON.HemisphericLight("lum_interne", new BABYLON.Vector3(0, -1, 0), scene)
-  lum_interne.intensity = 0.5
+  lum_interne.intensity = 0.6
 
   // Material sol
   let materialSol = new BABYLON.StandardMaterial("materialSol", scene)
@@ -28,7 +28,7 @@ Arena = function(game) {
   materialMur.diffuseTexture.vScale = 1.0
 
   // Taille de la map
-  let w_map = 500
+  let w_map = 200
   let hauteur = 30
 
   // SOL
@@ -74,13 +74,13 @@ Arena = function(game) {
   obs[0].checkCollisions = true
   obs[0].material = materialBois
 
-  let nbElem = getRandomInt(10, 40)
+  let nbElem = getRandomInt(10, 30)
   console.log("Génération de " + nbElem + " obstacles")
   for (let i = 1; i < nbElem; i++) {
     obs[i] = obs[0].clone(`obs${i}`)
-    obs[i].scaling.x = getRandomInt(3, 25)
-    obs[i].scaling.y = getRandomInt(8, 25)
-    obs[i].scaling.z = getRandomInt(3, 20)
+    obs[i].scaling.x = getRandomInt(1, 10)
+    obs[i].scaling.y = getRandomInt(2, 15)
+    obs[i].scaling.z = getRandomInt(1, 10)
     obs[i].position = new BABYLON.Vector3(getRandomInt(-(w_map/2), w_map/2), obs[i].scaling.y/2, getRandomInt(-(w_map/2), w_map/2))
     obs[i].rotation.y = degToRad(getRandomInt(0, 89))
   }
