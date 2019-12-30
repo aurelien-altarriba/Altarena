@@ -11,3 +11,13 @@ html, body {
     height: 100%;
     touch-action: none;
 }
+
+#curseur {
+  position: fixed;
+  top: 47.7%;
+  left: 49.5%;
+  font-size: 2rem;
+  color: #000A;
+  text-shadow: 0 0 1px #FFF5;
+  font-weight: bold;
+}

@@ -37,21 +37,29 @@ Game = function(canvasId) {
   // On initie la scène avec une fonction associé à l'objet Game
   this.scene = this._initScene(engine)
 
+  // Ajout de l'armurerie
+  let armory = new Armory(this)
+  this.armory = armory
+
   let _player = new Player(this, canvas)
-  let _arena = new Arena(this)
   this._PlayerData = _player
+  let _arena = new Arena(this)
   this._rockets = []
   this._explosionRadius = []
+  this._lasers = []
 
   // Permet au jeu de tourner
   engine.runRenderLoop(() => {
-    this.fps = Math.round(1000/engine.getDeltaTime())
+    this.fps = Math.round(1000 / engine.getDeltaTime())
 
     // Checker le mouvement du joueur en lui envoyant le ratio de déplacement
     _player._checkMove((this.fps)/60)
 
     this.renderRockets()
     this.renderExplosionRadius()
+    this.renderLaser()
+    this.renderWeapons()
+
     this.scene.render()
 
     // Si launchBullets est a true, on tire
@@ -81,9 +89,6 @@ Game.prototype = {
 
   renderRockets : function() {
     for (let i = 0; i < this._rockets.length; i++) {
-      // On bouge la roquette vers l'avant
-      this._rockets[i].translate(new BABYLON.Vector3(0, 0, 2), 2, 0)
-
       // On crée un rayon qui part de la base de la roquette vers l'avant
       let rayRocket = new BABYLON.Ray(this._rockets[i].position, this._rockets[i].direction)
 
@@ -96,7 +101,7 @@ Game.prototype = {
         // On vérifie qu'on a bien touché quelque chose
         if (meshFound.pickedMesh && !meshFound.pickedMesh.isMain) {
           // On crée une sphere qui représentera la zone d'impact
-          let explosionRadius = BABYLON.Mesh.CreateSphere("sphere", 5.0, 20, this.scene)
+          let explosionRadius = BABYLON.Mesh.CreateSphere("sphere", 5.0, 15, this.scene)
 
           // On positionne la sphère là où il y a eu impact
           explosionRadius.position = meshFound.pickedPoint
@@ -126,7 +131,7 @@ Game.prototype = {
         this._rockets.splice(i, 1)
       }
       else {
-        let relativeSpeed = 1 / (this.fps/60)
+        let relativeSpeed = this.armory.weapons[2].setup.ammos.rocketSpeed / (this.fps/60)
         this._rockets[i].position.addInPlace(this._rockets[i].direction.scale(relativeSpeed))
       }
     }
@@ -134,7 +139,7 @@ Game.prototype = {
 
   renderExplosionRadius : function() {
     if (this._explosionRadius.length > 0) {
-      for (var i = 0; i < this._explosionRadius.length; i++) {
+      for (let i = 0; i < this._explosionRadius.length; i++) {
         this._explosionRadius[i].material.alpha -= 0.02
         if (this._explosionRadius[i].material.alpha <= 0) {
           this._explosionRadius[i].dispose()
@@ -143,4 +148,39 @@ Game.prototype = {
       }
     }
   },
+
+  renderLaser : function() {
+    if (this._lasers.length > 0) {
+      for (let i = 0; i < this._lasers.length; i++) {
+        this._lasers[i].edgesWidth -= 2
+
+        if (this._lasers[i].edgesWidth <= 0) {
+          this._lasers[i].dispose()
+          this._lasers.splice(i, 1)
+        }
+      }
+    }
+  },
+
+  renderWeapons : function() {
+    if (this._PlayerData && this._PlayerData.camera.weapons.inventory) {
+      // On regarde toutes les armes dans inventory
+      let inventoryWeapons = this._PlayerData.camera.weapons.inventory
+
+      for (let i = 0; i < inventoryWeapons.length; i++) {
+        // Si l'arme est active et n'est pas à la position haute (topPositionY)
+        if (inventoryWeapons[i].isActive &&
+        inventoryWeapons[i].position.y < this._PlayerData.camera.weapons.topPositionY)
+        {
+          inventoryWeapons[i].position.y += 0.1
+        }
+        else if (!inventoryWeapons[i].isActive &&
+        inventoryWeapons[i].position.y != this._PlayerData.camera.weapons.bottomPosition.y)
+        {
+          // Sinon, si l'arme est inactive et pas encore à la position basse
+          inventoryWeapons[i].position.y -= 0.1
+        }
+      }
+    }
+  }
 }

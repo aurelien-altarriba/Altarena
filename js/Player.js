@@ -70,6 +70,26 @@ Player = function(game, canvas) {
     }
   }, false)
 
+  // Changement des armes
+  this.previousWheeling = 0
+
+  canvas.addEventListener("wheel", (evt) => {
+    // Si la différence entre les deux tours de souris sont minimes
+    if (Math.round(evt.timeStamp - this.previousWheeling) > 10) {
+      if (evt.deltaY < 0) {
+        // Si on scroll vers le haut, on va chercher l'arme suivante
+        this.camera.weapons.nextWeapon(1)
+      }
+      else {
+        // Si on scroll vers le bas, on va chercher l'arme précédente
+        this.camera.weapons.nextWeapon(-1)
+      }
+
+      //On affecte a previousWheeling la valeur actuelle
+      this.previousWheeling = evt.timeStamp
+    }
+  }, false)
+
   // Initialisation de la caméra
   this._initCamera(this.game.scene, canvas)
 
@@ -88,8 +108,9 @@ Player.prototype = {
     this.spawnPoint = this.game.allSpawnPoints[randomPoint]
 
     let playerBox = BABYLON.Mesh.CreateBox("headMainPlayer", 3, scene)
-    playerBox.position = this.spawnPoint.clone();
+    playerBox.position = this.spawnPoint.clone()
     playerBox.ellipsoid = new BABYLON.Vector3(2, 2, 2)
+    playerBox.isPickable = false
 
     // On crée la caméra
     this.camera = new BABYLON.FreeCamera("camera", new BABYLON.Vector3(0, 0, 0), scene)
@@ -115,7 +136,7 @@ Player.prototype = {
     this.camera.axisMovement = [false, false, false, false]
 
     // On réinitialise la position de la caméra
-    //this.camera.setTarget(BABYLON.Vector3.Zero())
+    // this.camera.setTarget(BABYLON.Vector3.Zero())
     this.game.scene.activeCamera = this.camera
 
     let hitBoxPlayer = BABYLON.Mesh.CreateBox("hitBoxPlayer", 3, scene)
@@ -126,13 +147,13 @@ Player.prototype = {
   },
 
   handleUserMouseDown : function() {
-    if (this.isAlive === true) {
+    if (this.isAlive) {
       this.camera.weapons.fire()
     }
   },
 
   handleUserMouseUp : function() {
-    if (this.isAlive === true) {
+    if (this.isAlive) {
       this.camera.weapons.stopFire()
     }
   },
@@ -239,7 +260,12 @@ Player.prototype = {
     // Suppression des éléments
     this.camera.playerBox.dispose()
     this.camera.dispose()
-    this.camera.weapons.rocketLauncher.dispose()
+    let inventoryWeapons = this.camera.weapons.inventory
+    for (let i = 0; i < inventoryWeapons.length; i++) {
+      inventoryWeapons[i].dispose()
+    }
+    inventoryWeapons = []
+
     this.isAlive = false
 
     let canvas = this.game.scene.getEngine().getRenderingCanvas()
